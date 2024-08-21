@@ -1,14 +1,21 @@
-import adapter from 'cloudflare-worker-adapter';
-import {SqliteCache} from 'cloudflare-worker-adapter/cache/sqlite.js';
-import worker from 'cloudflare-worker-adapter';
+import fs from 'node:fs';
+import { createCache, startServer } from 'cloudflare-worker-adapter';
+import worker from '../../main.js';
 
-const cache = new SqliteCache('./config/cache.sqlite');
+const {
+    CONFIG_PATH = '/app/config.json',
+    TOML_PATH = '/app/config.toml',
+} = process.env;
 
-adapter.startServer(
+const config = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf-8'));
+const cache = await createCache(config?.database?.type, config?.database);
+console.log(`database: ${config?.database?.type} is ready`);
+
+startServer(
     8787,
-    'localhost',
-    './config/config.toml',
-    {DATABASE: cache},
-    {server: process.env.DOMAIN},
+    '127.0.0.1',
+    TOML_PATH,
+    { DATABASE: cache },
+    { baseURL: config.server },
     worker.fetch,
 );
